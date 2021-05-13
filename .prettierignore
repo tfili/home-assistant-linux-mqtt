@@ -1,0 +1,9 @@
+
+# Ignore everything
+*
+
+# Unignore code and style files
+!**/*.js
+!**/*.css
+!**/*.html
+!**/*.md

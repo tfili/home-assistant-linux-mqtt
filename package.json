@@ -1,0 +1,39 @@
+{
+  "name": "home-assistant-linux-mqtt",
+  "version": "0.0.1",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tfili/home-assistant-linux-mqtt.git"
+  },
+  "bugs": {
+    "url": "https://github.com/tfili/home-assistant-linux-mqtt/issues"
+  },
+  "scripts": {
+    "eslint": "eslint \"*.js\" --cache --quiet",
+    "prettier": "prettier --write \"**/*\"",
+    "prettier-check": "prettier --check \"**/*\""
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged",
+      "post-merge": "yarn localize-strings"
+    }
+  },
+  "lint-staged": {
+    "*.js": [
+      "eslint --cache --quiet --fix",
+      "prettier --write"
+    ],
+    "*.!(js)": "prettier --write"
+  },
+  "dependencies": {
+    "fs-extra": "^9.1.0",
+    "async-mqtt": "^2.6.1",
+    "yargs": "^16.2.0"
+  },
+  "devDependencies": {
+    "eslint": "^7.26.0",
+    "husky": "^4.2.5",
+    "prettier": "^2.1.1"
+  }
+}
