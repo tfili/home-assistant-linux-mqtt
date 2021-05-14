@@ -56,6 +56,9 @@ async function main() {
             const camera = await getCamera();
             await client.publish("laptop/camera", JSON.stringify(camera));
 
+            const microphone = await getMicrophone();
+            await client.publish("laptop/microphone", JSON.stringify(microphone));
+
             const memory = await getMemory();
             await client.publish("laptop/memory", JSON.stringify(memory));
 
@@ -118,6 +121,26 @@ async function getCamera() {
     }
 
     return result;
+}
+
+async function getMicrophone() {
+    try {
+        const { stdout, stderr } = await exec("grep RUNNING /proc/asound/card*/pcm*c/sub*/status");
+        if (stderr.length > 0) {
+            throw new Error(stderr);
+        }
+    
+        return {
+            active: (stdout.length > 0)
+        };
+    } catch (error) {
+        if(error.code === 1) {
+            return {
+                active: false
+            };
+        }
+        throw new Error(error);
+    }
 }
 
 const memoryRegex = /^Mem:\s+(?<total>\d+)\s+(?<used>\d+)\s+(?<free>\d+)\s+(?<shared>\d+)\s+(?<cache>\d+)/m;
