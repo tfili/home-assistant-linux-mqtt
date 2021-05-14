@@ -27,8 +27,8 @@
     "*.!(js)": "prettier --write"
   },
   "dependencies": {
-    "fs-extra": "^9.1.0",
     "async-mqtt": "^2.6.1",
+    "fs-extra": "^9.1.0",
     "yargs": "^16.2.0"
   },
   "devDependencies": {

@@ -1,6 +1,8 @@
 "use strict";
 
+const crypto = require("crypto");
 const MQTT = require("async-mqtt");
+const os = require("os");
 const util = require("util");
 const exec = util.promisify(require("child_process").exec);
 const yargs = require("yargs");
@@ -19,6 +21,12 @@ const argv = yargs
       type: "number",
       default: 1883,
     },
+    name: {
+        alias: "n",
+        description: "Name of the device to prefix the entities",
+        type: "string",
+        default: os.hostname()
+    },
     user: {
       alias: "u",
       description: "Username used to authenticate to the MQTT Server",
@@ -32,13 +40,16 @@ const argv = yargs
   })
   .implies("user", "password").argv;
 
+const uniqueId = crypto.createHash('md5').update(os.hostname()).digest("hex");
+const baseTopic = "homeassistant";
+const baseName = argv.name;
+
 main();
 
 async function main() {
   try {
     process.stdout.write("Connecting...");
     let options;
-    console.log(argv.password);
     if (argv.user) {
       options = {
         username: argv.user,
@@ -55,19 +66,23 @@ async function main() {
       process.stdout.write("Updating...");
 
       const cpu = await getCPUTemperatureAndFans();
-      await client.publish("laptop/cpu", JSON.stringify(cpu));
+      await client.publish(cpu.stateTopic, state(cpu.state));
+      await client.publish(cpu.configTopic, JSON.stringify(cpu.config));
+      await client.publish(cpu.attributesTopic, JSON.stringify(cpu.attributes));
 
       const camera = await getCamera();
-      await client.publish("laptop/camera", JSON.stringify(camera));
+      await client.publish(camera.stateTopic, state(camera.state));
+      await client.publish(camera.configTopic, JSON.stringify(camera.config));
 
       const microphone = await getMicrophone();
-      await client.publish("laptop/microphone", JSON.stringify(microphone));
+      await client.publish(microphone.stateTopic, state(microphone.state));
+      await client.publish(microphone.configTopic, JSON.stringify(microphone.config));
 
-      const memory = await getMemory();
-      await client.publish("laptop/memory", JSON.stringify(memory));
+    //   const memory = await getMemory();
+    //   await client.publish("laptop/memory", JSON.stringify(memory));
 
-      const disk = await getDiskUsage();
-      await client.publish("laptop/disk", JSON.stringify(disk));
+    //   const disk = await getDiskUsage();
+    //   await client.publish("laptop/disk", JSON.stringify(disk));
 
       process.stdout.write("Done!\n");
       await sleep(10);
@@ -87,21 +102,36 @@ async function getCPUTemperatureAndFans() {
     throw new Error(stderr);
   }
 
+  const stateTopic = `${baseTopic}/sensor/${uniqueId}/cpu_temperature/state`
+  const attributesTopic = `${baseTopic}/sensor/${uniqueId}/cpu_temperature/attributes`
   const result = {
-    temp: 0,
-    coreTemps: [],
-    fanSpeeds: [],
+    state: 0,
+    stateTopic,
+    config: {
+        name: `${baseName} CPU Temperature`,
+        device_class: "temperature",
+        state_topic: stateTopic,
+        json_attributes_topic: attributesTopic,
+        unique_id: `${uniqueId}-cpu_temperature`,
+        unit_of_measurement: "°F",
+    },
+    configTopic: `${baseTopic}/sensor/${uniqueId}/cpu_temperature/config`,
+    attributes: {
+        coreTemps: [],
+        fanSpeeds: [],
+    },
+    attributesTopic
   };
 
   const lines = stdout.split(/\r?\n/);
   let match;
   for (const line of lines) {
     if ((match = line.match(cpuRegex))) {
-      result.temp = Number(match[1]);
+      result.state = Number(match[1]);
     } else if ((match = line.match(coreRegex))) {
-      result.coreTemps[Number(match[1])] = Number(match[2]);
+      result.attributes.coreTemps[Number(match[1])] = Number(match[2]);
     } else if ((match = line.match(fanRegex))) {
-      result.fanSpeeds[Number(match[1]) - 1] = Number(match[2]);
+      result.attributes.fanSpeeds[Number(match[1]) - 1] = Number(match[2]);
     }
   }
 
@@ -115,19 +145,43 @@ async function getCamera() {
     throw new Error(stderr);
   }
 
+  const stateTopic = `${baseTopic}/binary_sensor/${uniqueId}/camera/state`;
   const result = {
-    active: false,
+    state: false,
+    stateTopic,
+    config: {
+      name: `${baseName} Camera`,
+      device_class: "connectivity",
+      state_topic: stateTopic,
+      unique_id: `${uniqueId}-camera`,
+      icon: "mdi:camera"
+    },
+    configTopic: `${baseTopic}/binary_sensor/${uniqueId}/camera/config`
   };
 
   const match = stdout.match(cameraRegex);
   if (match) {
-    result.active = Number(match[1]) > 0;
+    result.state = Number(match[1]) > 0;
   }
 
   return result;
 }
 
 async function getMicrophone() {
+  const stateTopic = `${baseTopic}/binary_sensor/${uniqueId}/microphone/state`;
+  const result = {
+    state: false,
+    stateTopic,
+    config: {
+      name: `${baseName} Microphone`,
+      device_class: "connectivity",
+      state_topic: stateTopic,
+      unique_id: `${uniqueId}-microphone`,
+      icon: "mdi:microphone"
+    },
+    configTopic: `${baseTopic}/binary_sensor/${uniqueId}/microphone/config`
+  };
+
   try {
     const { stdout, stderr } = await exec(
       "grep RUNNING /proc/asound/card*/pcm*c/sub*/status"
@@ -136,17 +190,14 @@ async function getMicrophone() {
       throw new Error(stderr);
     }
 
-    return {
-      active: stdout.length > 0,
-    };
+    result.state = stdout.length > 0;
   } catch (error) {
-    if (error.code === 1) {
-      return {
-        active: false,
-      };
+    if (error.code !== 1) {
+      throw new Error(error);
     }
-    throw new Error(error);
   }
+
+  return result;
 }
 
 const memoryRegex =
@@ -197,6 +248,14 @@ async function getDiskUsage() {
   }
 
   return result;
+}
+
+function state(s) {
+    if (typeof s === "boolean") {
+        return s ? "ON" : "OFF";
+    }
+
+    return s.toString();
 }
 
 function sleep(seconds) {
