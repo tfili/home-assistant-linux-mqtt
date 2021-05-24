@@ -29,6 +29,7 @@
   "dependencies": {
     "async-mqtt": "^2.6.1",
     "fs-extra": "^9.1.0",
+    "moment": "^2.29.1",
     "yargs": "^16.2.0"
   },
   "devDependencies": {

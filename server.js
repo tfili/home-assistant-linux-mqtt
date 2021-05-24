@@ -2,6 +2,7 @@
 
 const crypto = require("crypto");
 const MQTT = require("async-mqtt");
+const moment = require("moment");
 const os = require("os");
 const util = require("util");
 const exec = util.promisify(require("child_process").exec);
@@ -77,6 +78,11 @@ async function main() {
       const microphone = await getMicrophone();
       await client.publish(microphone.stateTopic, state(microphone.state));
       await client.publish(microphone.configTopic, JSON.stringify(microphone.config));
+
+      const uptime = await getUptime();
+      await client.publish(uptime.stateTopic, state(uptime.state));
+      await client.publish(uptime.configTopic, JSON.stringify(uptime.config));
+      await client.publish(uptime.attributesTopic, JSON.stringify(uptime.attributes));
 
     //   const memory = await getMemory();
     //   await client.publish("laptop/memory", JSON.stringify(memory));
@@ -246,6 +252,35 @@ async function getDiskUsage() {
     }
     result.total = result.used + result.free;
   }
+
+  return result;
+}
+
+async function getUptime() {
+  const { stdout, stderr } = await exec("cat /proc/uptime");
+  if (stderr.length > 0) {
+    throw new Error(stderr);
+  }
+
+  const seconds = stdout.split(/\s+/)[0];
+  const attributes = moment.duration(seconds, "seconds");
+
+  const stateTopic = `${baseTopic}/sensor/${uniqueId}/uptime/state`;
+  const attributesTopic = `${baseTopic}/sensor/${uniqueId}/uptime/attributes`
+  const result = {
+    state: seconds,
+    stateTopic,
+    config: {
+        name: `${baseName} Uptime`,
+        state_topic: stateTopic,
+        json_attributes_topic: attributesTopic,
+        unique_id: `${uniqueId}-uptime`,
+        unit_of_measurement: "seconds",
+    },
+    configTopic: `${baseTopic}/sensor/${uniqueId}/uptime/config`,
+    attributes: attributes._data,
+    attributesTopic
+  };
 
   return result;
 }
