@@ -268,14 +268,14 @@ async function getUptime() {
   const stateTopic = `${baseTopic}/sensor/${uniqueId}/uptime/state`;
   const attributesTopic = `${baseTopic}/sensor/${uniqueId}/uptime/attributes`
   const result = {
-    state: seconds,
+    state: Math.floor(seconds*1000),
     stateTopic,
     config: {
         name: `${baseName} Uptime`,
         state_topic: stateTopic,
         json_attributes_topic: attributesTopic,
         unique_id: `${uniqueId}-uptime`,
-        unit_of_measurement: "seconds",
+        unit_of_measurement: "milliseconds",
     },
     configTopic: `${baseTopic}/sensor/${uniqueId}/uptime/config`,
     attributes: attributes._data,
