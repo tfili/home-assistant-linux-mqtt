@@ -1,0 +1,11 @@
+{
+  "root": true,
+  "extends": [
+    "cesium/node",
+    "prettier"
+  ],
+  "parserOptions": {
+    "ecmaVersion": 2020
+  },
+  "rules": {}
+}

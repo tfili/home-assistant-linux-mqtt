@@ -11,13 +11,9 @@
   "scripts": {
     "eslint": "eslint \"*.js\" --cache --quiet",
     "prettier": "prettier --write \"**/*\"",
-    "prettier-check": "prettier --check \"**/*\""
-  },
-  "husky": {
-    "hooks": {
-      "pre-commit": "lint-staged",
-      "post-merge": "yarn localize-strings"
-    }
+    "prettier-check": "prettier --check \"**/*\"",
+    "pre-commit": "lint-staged",
+    "prepare": "husky install"
   },
   "lint-staged": {
     "*.js": [
@@ -28,13 +24,17 @@
   },
   "dependencies": {
     "async-mqtt": "^2.6.1",
-    "fs-extra": "^9.1.0",
+    "fs-extra": "^10.0.0",
     "moment": "^2.29.1",
-    "yargs": "^16.2.0"
+    "yargs": "^17.3.1"
   },
   "devDependencies": {
-    "eslint": "^7.26.0",
-    "husky": "^4.2.5",
-    "prettier": "^2.1.1"
+    "eslint": "^8.7.0",
+    "eslint-config-cesium": "^8.0.1",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-import": "^2.25.4",
+    "husky": "^7.0.4",
+    "lint-staged": "^12.2.2",
+    "prettier": "^2.5.1"
   }
 }

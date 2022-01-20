@@ -23,10 +23,10 @@ const argv = yargs
       default: 1883,
     },
     name: {
-        alias: "n",
-        description: "Name of the device to prefix the entities",
-        type: "string",
-        default: os.hostname()
+      alias: "n",
+      description: "Name of the device to prefix the entities",
+      type: "string",
+      default: os.hostname(),
     },
     user: {
       alias: "u",
@@ -41,7 +41,7 @@ const argv = yargs
   })
   .implies("user", "password").argv;
 
-const uniqueId = crypto.createHash('md5').update(os.hostname()).digest("hex");
+const uniqueId = crypto.createHash("md5").update(os.hostname()).digest("hex");
 const baseTopic = "homeassistant";
 const baseName = argv.name;
 
@@ -63,6 +63,7 @@ async function main() {
     );
     process.stdout.write("Done!\n");
 
+    //eslint-disable-next-line no-constant-condition
     while (true) {
       process.stdout.write("Updating...");
 
@@ -77,18 +78,24 @@ async function main() {
 
       const microphone = await getMicrophone();
       await client.publish(microphone.stateTopic, state(microphone.state));
-      await client.publish(microphone.configTopic, JSON.stringify(microphone.config));
+      await client.publish(
+        microphone.configTopic,
+        JSON.stringify(microphone.config)
+      );
 
       const uptime = await getUptime();
       await client.publish(uptime.stateTopic, state(uptime.state));
       await client.publish(uptime.configTopic, JSON.stringify(uptime.config));
-      await client.publish(uptime.attributesTopic, JSON.stringify(uptime.attributes));
+      await client.publish(
+        uptime.attributesTopic,
+        JSON.stringify(uptime.attributes)
+      );
 
-    //   const memory = await getMemory();
-    //   await client.publish("laptop/memory", JSON.stringify(memory));
+      //   const memory = await getMemory();
+      //   await client.publish("laptop/memory", JSON.stringify(memory));
 
-    //   const disk = await getDiskUsage();
-    //   await client.publish("laptop/disk", JSON.stringify(disk));
+      //   const disk = await getDiskUsage();
+      //   await client.publish("laptop/disk", JSON.stringify(disk));
 
       process.stdout.write("Done!\n");
       await sleep(10);
@@ -108,25 +115,25 @@ async function getCPUTemperatureAndFans() {
     throw new Error(stderr);
   }
 
-  const stateTopic = `${baseTopic}/sensor/${uniqueId}/cpu_temperature/state`
-  const attributesTopic = `${baseTopic}/sensor/${uniqueId}/cpu_temperature/attributes`
+  const stateTopic = `${baseTopic}/sensor/${uniqueId}/cpu_temperature/state`;
+  const attributesTopic = `${baseTopic}/sensor/${uniqueId}/cpu_temperature/attributes`;
   const result = {
     state: 0,
     stateTopic,
     config: {
-        name: `${baseName} CPU Temperature`,
-        device_class: "temperature",
-        state_topic: stateTopic,
-        json_attributes_topic: attributesTopic,
-        unique_id: `${uniqueId}-cpu_temperature`,
-        unit_of_measurement: "°F",
+      name: `${baseName} CPU Temperature`,
+      device_class: "temperature",
+      state_topic: stateTopic,
+      json_attributes_topic: attributesTopic,
+      unique_id: `${uniqueId}-cpu_temperature`,
+      unit_of_measurement: "°F",
     },
     configTopic: `${baseTopic}/sensor/${uniqueId}/cpu_temperature/config`,
     attributes: {
-        coreTemps: [],
-        fanSpeeds: [],
+      coreTemps: [],
+      fanSpeeds: [],
     },
-    attributesTopic
+    attributesTopic,
   };
 
   const lines = stdout.split(/\r?\n/);
@@ -160,9 +167,9 @@ async function getCamera() {
       device_class: "connectivity",
       state_topic: stateTopic,
       unique_id: `${uniqueId}-camera`,
-      icon: "mdi:camera"
+      icon: "mdi:camera",
     },
-    configTopic: `${baseTopic}/binary_sensor/${uniqueId}/camera/config`
+    configTopic: `${baseTopic}/binary_sensor/${uniqueId}/camera/config`,
   };
 
   const match = stdout.match(cameraRegex);
@@ -183,9 +190,9 @@ async function getMicrophone() {
       device_class: "connectivity",
       state_topic: stateTopic,
       unique_id: `${uniqueId}-microphone`,
-      icon: "mdi:microphone"
+      icon: "mdi:microphone",
     },
-    configTopic: `${baseTopic}/binary_sensor/${uniqueId}/microphone/config`
+    configTopic: `${baseTopic}/binary_sensor/${uniqueId}/microphone/config`,
   };
 
   try {
@@ -206,55 +213,59 @@ async function getMicrophone() {
   return result;
 }
 
-const memoryRegex =
-  /^Mem:\s+(?<total>\d+)\s+(?<used>\d+)\s+(?<free>\d+)\s+(?<shared>\d+)\s+(?<cache>\d+)/m;
-async function getMemory() {
-  const { stdout, stderr } = await exec("free");
-  if (stderr.length > 0) {
-    throw new Error(stderr);
-  }
+// const memoryRegex =
+//   /^Mem:\s+(?<total>\d+)\s+(?<used>\d+)\s+(?<free>\d+)\s+(?<shared>\d+)\s+(?<cache>\d+)/m;
+// async function getMemory() {
+//   const { stdout, stderr } = await exec("free");
+//   if (stderr.length > 0) {
+//     throw new Error(stderr);
+//   }
 
-  const result = {
-    total: 0,
-    used: 0,
-    free: 0,
-    shared: 0,
-    cache: 0,
-  };
+//   const result = {
+//     total: 0,
+//     used: 0,
+//     free: 0,
+//     shared: 0,
+//     cache: 0,
+//   };
 
-  const match = stdout.match(memoryRegex);
-  if (match) {
-    for (const key in result) {
-      result[key] = Number(match.groups[key]);
-    }
-  }
+//   const match = stdout.match(memoryRegex);
+//   if (match) {
+//     for (const key in result) {
+//       if (result.hasOwnProperty(key)) {
+//         result[key] = Number(match.groups[key]);
+//       }
+//     }
+//   }
 
-  return result;
-}
+//   return result;
+// }
 
-const diskUsageRegex = /^(?<used>\d+)\s+(?<free>\d+)/m;
-async function getDiskUsage() {
-  const { stdout, stderr } = await exec("df --output=used,avail /");
-  if (stderr.length > 0) {
-    throw new Error(stderr);
-  }
+// const diskUsageRegex = /^(?<used>\d+)\s+(?<free>\d+)/m;
+// async function getDiskUsage() {
+//   const { stdout, stderr } = await exec("df --output=used,avail /");
+//   if (stderr.length > 0) {
+//     throw new Error(stderr);
+//   }
 
-  const result = {
-    total: 0,
-    used: 0,
-    free: 0,
-  };
+//   const result = {
+//     total: 0,
+//     used: 0,
+//     free: 0,
+//   };
 
-  const match = stdout.match(diskUsageRegex);
-  if (match) {
-    for (const key in result) {
-      result[key] = Number(match.groups[key]);
-    }
-    result.total = result.used + result.free;
-  }
+//   const match = stdout.match(diskUsageRegex);
+//   if (match) {
+//     for (const key in result) {
+//       if (result.hasOwnProperty(key)) {
+//         result[key] = Number(match.groups[key]);
+//       }
+//     }
+//     result.total = result.used + result.free;
+//   }
 
-  return result;
-}
+//   return result;
+// }
 
 async function getUptime() {
   const { stdout, stderr } = await exec("cat /proc/uptime");
@@ -266,31 +277,31 @@ async function getUptime() {
   const attributes = moment.duration(seconds, "seconds");
 
   const stateTopic = `${baseTopic}/sensor/${uniqueId}/uptime/state`;
-  const attributesTopic = `${baseTopic}/sensor/${uniqueId}/uptime/attributes`
+  const attributesTopic = `${baseTopic}/sensor/${uniqueId}/uptime/attributes`;
   const result = {
-    state: Math.floor(seconds*1000),
+    state: Math.floor(seconds * 1000),
     stateTopic,
     config: {
-        name: `${baseName} Uptime`,
-        state_topic: stateTopic,
-        json_attributes_topic: attributesTopic,
-        unique_id: `${uniqueId}-uptime`,
-        unit_of_measurement: "milliseconds",
+      name: `${baseName} Uptime`,
+      state_topic: stateTopic,
+      json_attributes_topic: attributesTopic,
+      unique_id: `${uniqueId}-uptime`,
+      unit_of_measurement: "milliseconds",
     },
     configTopic: `${baseTopic}/sensor/${uniqueId}/uptime/config`,
     attributes: attributes._data,
-    attributesTopic
+    attributesTopic,
   };
 
   return result;
 }
 
 function state(s) {
-    if (typeof s === "boolean") {
-        return s ? "ON" : "OFF";
-    }
+  if (typeof s === "boolean") {
+    return s ? "ON" : "OFF";
+  }
 
-    return s.toString();
+  return s.toString();
 }
 
 function sleep(seconds) {

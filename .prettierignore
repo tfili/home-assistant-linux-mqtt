@@ -2,6 +2,9 @@
 # Ignore everything
 *
 
+# Unignore directories (to all depths)
+!.git/**/
+
 # Unignore code and style files
 !**/*.js
 !**/*.css
