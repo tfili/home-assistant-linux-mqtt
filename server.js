@@ -6,6 +6,7 @@ const moment = require("moment");
 const os = require("os");
 const util = require("util");
 const exec = util.promisify(require("child_process").exec);
+const { default: SysTray } = require("systray2");
 const yargs = require("yargs");
 
 const argv = yargs
@@ -44,6 +45,7 @@ const argv = yargs
 const uniqueId = crypto.createHash("md5").update(os.hostname()).digest("hex");
 const baseTopic = "homeassistant";
 const baseName = argv.name;
+let activePromise;
 
 main();
 
@@ -63,8 +65,12 @@ async function main() {
     );
     process.stdout.write("Done!\n");
 
+    await setupSystray();
+
     //eslint-disable-next-line no-constant-condition
     while (true) {
+      await activePromise;
+
       process.stdout.write("Updating...");
 
       const cpu = await getCPUTemperatureAndFans();
@@ -104,6 +110,69 @@ async function main() {
     process.stdout.write("Failed!\n\n");
     console.log(error.message);
   }
+}
+
+async function setupSystray() {
+  //eslint-disable-next-line prefer-const
+  let systray;
+  let resolve;
+  const activeItem = {
+    title: "Active",
+    tooltip: "Sending to Home Assitant",
+    checked: false,
+    enabled: true,
+    click: () => {
+      activeItem.checked = !activeItem.checked;
+      systray.sendAction({
+        type: "update-item",
+        item: activeItem,
+      });
+
+      if (activeItem.checked) {
+        resolve();
+        resolve = undefined;
+      } else {
+        // Inactive
+        if (resolve) {
+          resolve(); // Just in case
+        }
+        activePromise = new Promise((res) => {
+          resolve = res;
+        });
+      }
+    },
+  };
+
+  const itemExit = {
+    title: "Exit",
+    tooltip: "bb",
+    checked: false,
+    enabled: true,
+    click: () => systray.kill(false),
+  };
+
+  systray = new SysTray({
+    menu: {
+      icon: "./images/ha.png",
+      title: "Home Assistant Status",
+      tooltip: "Exposes computer information to Home Assistant via MQTT",
+      items: [activeItem, SysTray.separator, itemExit],
+    },
+    debug: false,
+    copyDir: false,
+  });
+
+  systray.onClick((action) => {
+    if (action.item.click !== null) {
+      action.item.click();
+    }
+  });
+
+  await systray.ready();
+
+  activePromise = new Promise((res) => {
+    resolve = res;
+  });
 }
 
 const cpuRegex = /^Package id 0:\s+\+([\d\.]+)/;
